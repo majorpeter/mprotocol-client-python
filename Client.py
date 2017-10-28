@@ -4,8 +4,12 @@ from threading import Thread, RLock, Event
 from mprotocol_client_python.ProtocolResult import ProtocolResult
 from mprotocol_client_python.NodeProperty import NodeProperty
 
-
+## MProtocol client class
+#
+# Manages connection to the remote device and is the interface for data exchange
 class Client:
+    ## Creates TCP/IP connection to server
+    # @param timeout blocking timeout for synchronous commands
     def __init__(self, ip_address, port, timeout=None):
         self.ip_address = ip_address
         self.port = port
@@ -31,11 +35,13 @@ class Client:
     def connect(self):
         self.socket.connect((self.ip_address, self.port))
 
+    ## Sends command without waiting for any response
     def send_async(self, command):
         self.lock.acquire()
         self.socket.send((command + '\n').encode('ascii'))
         self.lock.release()
 
+    ## Sends command and waits for response
     def send_sync(self, command):
         self.lock.acquire()
 
@@ -50,6 +56,9 @@ class Client:
         self.lock.release()
         return response
 
+    ## Adds a new subscription to an asynchronous change message
+    #
+    # @note Also enables sending changes on the given node if it is the first subscription.
     def add_subscription(self, callback, node_path, property_name=None):
         self.subscription_lock.acquire()
 
@@ -70,6 +79,9 @@ class Client:
 
         self.subscription_lock.release()
 
+    ## Removes a subscription for asynchronous change messages
+    #
+    # @note Also disables sending changes on the given node if it was the last subscription.
     def remove_subscription(self, callback, node_path, property_name=None):
         self.subscription_lock.acquire()
 
@@ -88,6 +100,7 @@ class Client:
 
         self.subscription_lock.release()
 
+    ## Background thread that handles incoming traffic
     def thread_function(self):
         while True:
             received_bytes = self.socket.recv(4096)
@@ -95,6 +108,7 @@ class Client:
                 self.received_str += received_bytes.decode('ascii')
                 self.process_received_str()
 
+    ## This function parses each incoming data segment
     def process_received_str(self):
         lines = self.received_str.split('\n')
 
@@ -123,6 +137,8 @@ class Client:
         # keep last unfinished line in buffer
         self.received_str = lines[-1]
 
+    ## This function processes incoming lines that are async. change messages
+    # @param line change message (e.g. 'CHG <node_path>.<property>=<new_value>
     def process_change(self, line):
         # trim 'CHG '
         line = line[line.index(' ') + 1:]

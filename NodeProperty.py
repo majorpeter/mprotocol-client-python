@@ -1,50 +1,72 @@
+## This class allows easy access to nodes and properties
 class NodeProperty:
     actual_attributes = ['_client', '_path', '_children']
 
+    ## Constructor
+    # @param client instance of Client class (serial interface)
+    # @param path array of parent nodes / property name
     def __init__(self, client, path=[]):
         self._client = client
         self._path = path
         self._children = None
 
+    ## Returns the node's or property's name (last element of path array)
     def get_name(self):
         if len(self._path) > 0:
             return self._path[-1]
         return '/'
 
+    ## Returns the nodes whole path
     def get_path_as_node(self):
         return '/' + ' / '.join(self._path)
 
+    ## Returns the node property's whole path
+    # @note same as get_path_as_node, except for appending the last part with a dot instead
     def get_path_as_property(self):
         return '/' + '/'.join(self._path[:-1]) + '.' + self._path[-1]
 
+    ## Returns the whole path of the node's or property's parent node
     def get_parent_path(self):
         return '/' + ' / '.join(self._path[:-1])
 
+    ## Registers a callback to this property's changes
+    # @param callback the function to be called when the property changes
+    #                 signature: callback_function(property_name, new_value)
     def subscribe_to_changes(self, callback):
         self._client.add_subscription(callback, self.get_parent_path(), self.get_name())
 
+    ## Unregisters the callback from this property's changes
     def unsubscribe_from_changes(self, callback):
         self._client.remove_subscription(callback, self.get_parent_path(), self.get_name())
 
+    ## Registers a callback to any property's changes in this node
+    # @param callback the function to be called when a property of this node changes
+    #                 signature: callback_function(property_name, new_value)
     def subscribe_to_all_property_changes(self, callback):
         self._client.add_subscription(callback, self.get_path_as_node())
 
+    ## Unregisters a callback from this node's changes
     def unsubscribe_from_all_property_changes(self, callback):
         self._client.remove_subscription(callback, self.get_path_as_node())
 
+    ## Sends a GET message for this node
     def protocol_get_node(self):
         return self._client.send_sync('GET ' + self.get_path_as_node())
 
+    ## Sends a GET message for this property
     def protocol_get_property_value(self):
         return self._client.send_sync('GET ' + self.get_path_as_property())
 
-    def protocol_call_method(self, argument):
+    ## Sends a CALL message for this method
+    # @param argument optional single string argument of method
+    def protocol_call_method(self, argument = None):
         cmd = 'CALL ' + self.get_path_as_property()
         if argument:
               cmd += '=' + argument
         result = self._client.send_sync(cmd)
         return result
 
+    ## Updates the _children array of this instance from device
     def fetch_children(self):
         result = self.protocol_get_node()
         if not result:
@@ -56,9 +78,11 @@ class NodeProperty:
                 child_node_name = line[2:]
                 self._children.append(NodeProperty(self._client, self._path + [child_node_name]))
 
+    ## This override allows access to nodes' children by name as if it were an attribute of the node
     def __getattr__(self, name):
         return NodeProperty(self._client, self._path + [name])
 
+    ## This override allows setting property values by '='
     def __setattr__(self, key, value):
         if key in NodeProperty.actual_attributes:
             object.__setattr__(self, key, value)
@@ -67,12 +91,14 @@ class NodeProperty:
             if not result:
                 raise BaseException('Could not set property value: %s, %s=%s' % (str(self._path), key, value))
 
+    ## This override implements lazy evaluation of GET messages (reads current value of the property and returns is)
     def __str__(self):
         result = self.protocol_get_property_value()
         if not result:
             raise BaseException('Could not get property value: ' + str(self._path))
         return result.data['value']
 
+    ## This override allows calling protocol methods with 'function(parameter)' syntax
     def __call__(self, *args, **kwargs):
         if len(args) > 1:
             raise BaseException('Too many args in method call: ' + str(self._path))
@@ -82,6 +108,7 @@ class NodeProperty:
             arg = str(args[0])
         return self.protocol_call_method(arg)
 
+    ## This override allows iteration over a node's children (e.g. 'for child in node:')
     def __getitem__(self, item):
         if type(item) == 'str':
             return str(getattr(self, item))
@@ -91,5 +118,6 @@ class NodeProperty:
 
         return self._children[item]
 
+    ## This override allows setting property values using the array subscript syntax
     def __setitem__(self, key, value):
         setattr(self, key, value)
