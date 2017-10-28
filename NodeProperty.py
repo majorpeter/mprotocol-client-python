@@ -3,10 +3,10 @@ class NodeProperty:
         self._client = client
         self._path = path
 
-    def get_node(self):
+    def protocol_get_node(self):
         return self._client.send_sync('GET /' + '/'.join(self._path))
 
-    def get_property(self):
+    def protocol_get_property_value(self):
         return self._client.send_sync('GET /' + '/'.join(self._path[:-1]) + '.' + self._path[-1])
 
     def __getattr__(self, name):
@@ -21,7 +21,10 @@ class NodeProperty:
                 raise BaseException('Could not set property value: %s, %s=%s' % (str(self._path), key, value))
 
     def __str__(self):
-        result = self.get_property()
+        result = self.protocol_get_property_value()
         if not result:
             raise BaseException('Could not get property value: ' + str(self._path))
         return result.data['value']
+
+    def __getitem__(self, item):
+        return str(getattr(self, item))
