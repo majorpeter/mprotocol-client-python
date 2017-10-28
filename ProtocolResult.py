@@ -2,14 +2,16 @@ import re
 
 
 class ProtocolResult:
-    def __init__(self, response_line):
+    ok_init_str = 'E0:Ok'
+
+    def __init__(self, response_line, data=None):
         match = re.match('^E([0-9]):', response_line)
         if not match:
             raise ValueError('Invalid response line: %s' % response_line)
 
         self.ordinal = int(match[1])
         self.message = response_line.split(':')[1]
-        self.data = None
+        self.data = data
 
     @staticmethod
     def is_valid_result(response_line):
@@ -19,4 +21,7 @@ class ProtocolResult:
         return self.ordinal == 0
 
     def __str__(self):
-        return '%s (Code: %d)' % (self.message, self.ordinal)
+        str = '%s (Code: %d)' % (self.message, self.ordinal)
+        if self.data:
+            str += ' (Data: %s)' % self.data
+        return str

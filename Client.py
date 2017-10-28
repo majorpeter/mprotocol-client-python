@@ -14,6 +14,8 @@ class Client:
         self.lock = RLock()
         self.result = None
         self.received_str = ''
+        self.receiving_multiline = False
+        self.received_multilines = None
         self.response_received = Event()
 
         self.connect()
@@ -52,12 +54,23 @@ class Client:
     def process_received_str(self):
         lines = self.received_str.split('\n')
 
-        #TODO is_multiline = False
-        for i in range(0, len(lines) - 2):
+        for i in range(0, len(lines) - 1):
             line = lines[i]
-            if ProtocolResult.is_valid_result(line):
+            if self.receiving_multiline:
+                if line != '}':
+                    self.received_multilines.append(line)
+                else:
+                    self.result = ProtocolResult(ProtocolResult.ok_init_str, self.received_multilines)
+                    self.response_received.set()
+
+                    self.receiving_multiline = False
+                    self.received_multilines = None
+            elif ProtocolResult.is_valid_result(line):
                 self.result = ProtocolResult(line)
                 self.response_received.set()
+            elif line == '{':
+                self.receiving_multiline = True
+                self.received_multilines = []
             else:
                 print('Unable to process response: ' + line)
 
