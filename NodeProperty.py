@@ -1,9 +1,15 @@
 class NodeProperty:
-    actual_attributes = ['_client', '_path']
+    actual_attributes = ['_client', '_path', '_children']
 
     def __init__(self, client, path=[]):
         self._client = client
         self._path = path
+        self._children = None
+
+    def get_name(self):
+        if len(self._path) > 0:
+            return self._path[-1]
+        return '/'
 
     def get_path_as_node(self):
         return '/' + ' / '.join(self._path)
@@ -23,6 +29,17 @@ class NodeProperty:
               cmd += '=' + argument
         result = self._client.send_sync(cmd)
         return result
+
+    def fetch_children(self):
+        result = self.protocol_get_node()
+        if not result:
+            raise BaseException('Could not fetch children for: %s' % str(self._path))
+
+        self._children = []
+        for line in result.data:
+            if line.startswith('N '):
+                child_node_name = line[2:]
+                self._children.append(NodeProperty(self._client, self._path + [child_node_name]))
 
     def __getattr__(self, name):
         return NodeProperty(self._client, self._path + [name])
@@ -51,7 +68,13 @@ class NodeProperty:
         return self.protocol_call_method(arg)
 
     def __getitem__(self, item):
-        return str(getattr(self, item))
+        if type(item) == 'str':
+            return str(getattr(self, item))
+
+        if not self._children:
+            self.fetch_children()
+
+        return self._children[item]
 
     def __setitem__(self, key, value):
         setattr(self, key, value)
