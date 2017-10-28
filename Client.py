@@ -2,6 +2,8 @@ import re
 import socket
 from threading import Thread, RLock, Event
 
+from mprotocol_client_python.ProtocolResult import ProtocolResult
+
 
 class Client:
     def __init__(self, ip_address, port):
@@ -10,7 +12,7 @@ class Client:
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.lock = RLock()
-        self.response_str = None
+        self.result = None
         self.received_str = ''
         self.response_received = Event()
 
@@ -31,11 +33,11 @@ class Client:
         self.lock.acquire()
 
         self.response_received.clear()
-        self.response_str = None
+        self.result = None
 
         self.socket.send((command + '\n').encode('ascii'))
         self.response_received.wait()
-        response = self.response_str
+        response = self.result
 
         self.lock.release()
         return response
@@ -53,8 +55,8 @@ class Client:
         #TODO is_multiline = False
         for i in range(0, len(lines) - 2):
             line = lines[i]
-            if re.match('^E[0-9]:', line):
-                self.response_str = line
+            if ProtocolResult.is_valid_result(line):
+                self.result = ProtocolResult(line)
                 self.response_received.set()
             else:
                 print('Unable to process response: ' + line)
