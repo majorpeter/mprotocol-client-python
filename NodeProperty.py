@@ -17,6 +17,21 @@ class NodeProperty:
     def get_path_as_property(self):
         return '/' + '/'.join(self._path[:-1]) + '.' + self._path[-1]
 
+    def get_parent_path(self):
+        return '/' + ' / '.join(self._path[:-1])
+
+    def subscribe_to_changes(self, callback):
+        self._client.add_subscription(callback, self.get_parent_path(), self.get_name())
+
+    def unsubscribe_from_changes(self, callback):
+        self._client.remove_subscription(callback, self.get_parent_path(), self.get_name())
+
+    def subscribe_to_all_property_changes(self, callback):
+        self._client.add_subscription(callback, self.get_path_as_node())
+
+    def unsubscribe_from_all_property_changes(self, callback):
+        self._client.remove_subscription(callback, self.get_path_as_node())
+
     def protocol_get_node(self):
         return self._client.send_sync('GET ' + self.get_path_as_node())
 
