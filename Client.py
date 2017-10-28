@@ -6,9 +6,10 @@ from mprotocol_client_python.NodeProperty import NodeProperty
 
 
 class Client:
-    def __init__(self, ip_address, port):
+    def __init__(self, ip_address, port, timeout=None):
         self.ip_address = ip_address
         self.port = port
+        self.timeout = timeout
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.lock = RLock()
@@ -42,7 +43,8 @@ class Client:
         self.result = None
 
         self.socket.send((command + '\n').encode('ascii'))
-        self.response_received.wait()
+        if not self.response_received.wait(self.timeout):
+            raise BaseException('Connection timed out (last command: %s)' % command)
         response = self.result
 
         self.lock.release()
