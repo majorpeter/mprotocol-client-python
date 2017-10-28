@@ -3,6 +3,7 @@ import socket
 from threading import Thread, RLock, Event
 
 from mprotocol_client_python.ProtocolResult import ProtocolResult
+from mprotocol_client_python.NodeProperty import NodeProperty
 
 
 class Client:
@@ -17,6 +18,7 @@ class Client:
         self.receiving_multiline = False
         self.received_multilines = None
         self.response_received = Event()
+        self.root = NodeProperty(self)
 
         self.connect()
 
