@@ -76,5 +76,5 @@ class Client:
             else:
                 print('Unable to process response: ' + line)
 
-        # keep last unfinished line
+        # keep last unfinished line in buffer
         self.received_str = lines[-1]
