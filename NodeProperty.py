@@ -89,7 +89,8 @@ class NodeProperty:
         else:
             result = self._client.send_sync('SET /' + '/'.join(self._path) + '.' + key + '=' + value)
             if not result:
-                raise BaseException('Could not set property value: %s, %s=%s' % (str(self._path), key, value))
+                raise BaseException('Could not set property value: %s, %s=%s, Error: %s' % \
+                                    (str(self._path), key, value, str(result)))
 
     ## This override implements lazy evaluation of GET messages (reads current value of the property and returns is)
     def __str__(self):
