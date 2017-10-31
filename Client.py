@@ -107,6 +107,9 @@ class Client:
             if len(received_bytes) != 0:
                 self.received_str += received_bytes.decode('ascii')
                 self.process_received_str()
+            else:
+                # recv() returns empty string if the remote side has closed the connection
+                break
 
     ## This function parses each incoming data segment
     def process_received_str(self):
