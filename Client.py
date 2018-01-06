@@ -27,7 +27,7 @@ class Client:
         self.received_str = ''
         self.receiving_multiline = False
         self.received_multilines = None
-        self.response_received = Event()
+        self.response_received_or_error = Event()
         self.subscribed_nodes = {}
         self.subscription_lock = RLock()
 
@@ -44,24 +44,28 @@ class Client:
 
     ## Sends command without waiting for any response
     def send_async(self, command):
-        self.lock.acquire()
-        self.socket.send((command + '\n').encode('ascii'))
-        self.lock.release()
+        if not self.socket:
+            raise BaseException('Socket not available')
+
+        with self.lock:
+            self.socket.send((command + '\n').encode('ascii'))
 
     ## Sends command and waits for response
     def send_sync(self, command):
-        self.lock.acquire()
+        with self.lock:
+            self.response_received_or_error.clear()
+            self.result = None
 
-        self.response_received.clear()
-        self.result = None
+            self.socket.send((command + '\n').encode('ascii'))
+            if not self.response_received_or_error.wait(self.timeout):
+                self.socket.close()
+                raise BaseException('Connection timed out (last command: %s)' % command)
 
-        self.socket.send((command + '\n').encode('ascii'))
-        if not self.response_received.wait(self.timeout):
-            raise BaseException('Connection timed out (last command: %s)' % command)
-        response = self.result
+            if not self.socket:
+                raise BaseException('Socket destroyed (last command: %s)' % command)
 
-        self.lock.release()
-        return response
+            response = self.result
+            return response
 
     ## Adds a new subscription to an asynchronous change message
     #
@@ -119,13 +123,18 @@ class Client:
                 else:
                     # recv() returns empty string if the remote side has closed the connection
                     DEBUG_PRINT('finishing thread (empty recv)')
-                    self.socket.close()
                     break
             except Exception as e:
                 # remote side will not be sending more data after connection errors
                 DEBUG_PRINT('finishing thread (exception:%s)' % str(e))
-                self.socket.close()
                 break
+
+        # close and delete socket so that it won't be used again
+        self.socket.close()
+        self.socket = None
+
+        # try to signal error to caller thread
+        self.response_received_or_error.set()
 
     ## This function parses each incoming data segment
     def process_received_str(self):
@@ -138,13 +147,13 @@ class Client:
                     self.received_multilines.append(line)
                 else:
                     self.result = ProtocolResult(ProtocolResult.ok_init_str, self.received_multilines)
-                    self.response_received.set()
+                    self.response_received_or_error.set()
 
                     self.receiving_multiline = False
                     self.received_multilines = None
             elif ProtocolResult.is_valid_result(line):
                 self.result = ProtocolResult(line)
-                self.response_received.set()
+                self.response_received_or_error.set()
             elif line == '{':
                 self.receiving_multiline = True
                 self.received_multilines = []
