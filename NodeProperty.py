@@ -91,7 +91,7 @@ class NodeProperty:
 
     ## This override allows access to nodes' children by name as if it were an attribute of the node
     def __getattr__(self, name):
-        return NodeProperty(self._client, self._path + [name])
+        return NodeProperty(client=self._client, path=self._path + [name], sync=self._sync)
 
     ## This override allows setting property values by '='
     def __setattr__(self, key, value):
