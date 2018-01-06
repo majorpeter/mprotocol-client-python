@@ -104,12 +104,16 @@ class Client:
     ## Background thread that handles incoming traffic
     def thread_function(self):
         while True:
-            received_bytes = self.socket.recv(4096)
-            if len(received_bytes) != 0:
-                self.received_str += received_bytes.decode('ascii')
-                self.process_received_str()
-            else:
-                # recv() returns empty string if the remote side has closed the connection
+            try:
+                received_bytes = self.socket.recv(4096)
+                if len(received_bytes) != 0:
+                    self.received_str += received_bytes.decode('ascii')
+                    self.process_received_str()
+                else:
+                    # recv() returns empty string if the remote side has closed the connection
+                    break
+            except ConnectionResetError:
+                # remote side has reset the connection and will not be sending more data
                 break
 
     ## This function parses each incoming data segment
