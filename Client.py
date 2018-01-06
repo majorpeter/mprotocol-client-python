@@ -1,4 +1,5 @@
 import socket
+from datetime import datetime
 from threading import Thread, RLock, Event
 
 from mprotocol_client_python.ProtocolResult import ProtocolResult
@@ -6,7 +7,7 @@ from mprotocol_client_python.NodeProperty import NodeProperty
 
 
 def DEBUG_PRINT(message):
-    print(message)
+    print('[%s] %s' % (datetime.now().strftime('%H:%M:%S'), message))
 
 
 ## MProtocol client class
