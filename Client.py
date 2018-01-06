@@ -71,45 +71,39 @@ class Client:
     #
     # @note Also enables sending changes on the given node if it is the first subscription.
     def add_subscription(self, callback, node_path, property_name=None):
-        self.subscription_lock.acquire()
+        with self.subscription_lock:
+            if node_path in self.subscribed_nodes.keys():
+                item = self.subscribed_nodes[node_path]
+            else:
+                item = {}
+                self.subscribed_nodes[node_path] = item
+                self.send_sync('OPEN ' + node_path)
 
-        if node_path in self.subscribed_nodes.keys():
-            item = self.subscribed_nodes[node_path]
-        else:
-            item = {}
-            self.subscribed_nodes[node_path] = item
-            self.send_sync('OPEN ' + node_path)
+            if property_name is None:
+                property_name = ''
 
-        if property_name is None:
-            property_name = ''
-
-        if property_name in item.keys():
-            item[property_name].append(callback)
-        else:
-            item[property_name] = [callback]
-
-        self.subscription_lock.release()
+            if property_name in item.keys():
+                item[property_name].append(callback)
+            else:
+                item[property_name] = [callback]
 
     ## Removes a subscription for asynchronous change messages
     #
     # @note Also disables sending changes on the given node if it was the last subscription.
     def remove_subscription(self, callback, node_path, property_name=None):
-        self.subscription_lock.acquire()
+        with self.subscription_lock:
+            if node_path in self.subscribed_nodes.keys():
+                if property_name is None:
+                    property_name = ''
 
-        if node_path in self.subscribed_nodes.keys():
-            if property_name is None:
-                property_name = ''
-
-            if property_name in self.subscribed_nodes[node_path]:
-                if callback in self.subscribed_nodes[node_path][property_name]:
-                    self.subscribed_nodes[node_path][property_name].remove(callback)
-                    if len(self.subscribed_nodes[node_path][property_name]) == 0:
-                        del self.subscribed_nodes[node_path][property_name]
-                        if len(self.subscribed_nodes[node_path]) == 0:
-                            self.send_sync('CLOSE ' + node_path)
-                            del self.subscribed_nodes[node_path]
-
-        self.subscription_lock.release()
+                if property_name in self.subscribed_nodes[node_path]:
+                    if callback in self.subscribed_nodes[node_path][property_name]:
+                        self.subscribed_nodes[node_path][property_name].remove(callback)
+                        if len(self.subscribed_nodes[node_path][property_name]) == 0:
+                            del self.subscribed_nodes[node_path][property_name]
+                            if len(self.subscribed_nodes[node_path]) == 0:
+                                self.send_sync('CLOSE ' + node_path)
+                                del self.subscribed_nodes[node_path]
 
     ## Background thread that handles incoming traffic
     def thread_function(self):
@@ -160,7 +154,7 @@ class Client:
             elif line.startswith('CHG '):
                 self.process_change(line)
             else:
-                print('Unable to process response: ' + line)
+                DEBUG_PRINT('Unable to process response: ' + line)
 
         # keep last unfinished line in buffer
         self.received_str = lines[-1]
@@ -172,22 +166,19 @@ class Client:
         line = line[line.index(' ') + 1:]
         node_path = line[:line.index('.')]
 
-        self.subscription_lock.acquire()
+        with self.subscription_lock:
+            if node_path in self.subscribed_nodes.keys():
+                subscribed_node = self.subscribed_nodes[node_path]
 
-        if node_path in self.subscribed_nodes.keys():
-            subscribed_node = self.subscribed_nodes[node_path]
+                prop = line[line.index('.') + 1:line.index('=')]
+                value = line[line.index('=')+1:]
 
-            prop = line[line.index('.') + 1:line.index('=')]
-            value = line[line.index('=')+1:]
+                # look for an exact matching property subscription
+                if prop in subscribed_node.keys():
+                    for callback in subscribed_node[prop]:
+                        callback(prop, value)
 
-            # look for an exact matching property subscription
-            if prop in subscribed_node.keys():
-                for callback in subscribed_node[prop]:
-                    callback(prop, value)
-
-            # send to node subscription if available
-            if '' in subscribed_node.keys():
-                for callback in subscribed_node['']:
-                    callback(prop, value)
-
-        self.subscription_lock.release()
+                # send to node subscription if available
+                if '' in subscribed_node.keys():
+                    for callback in subscribed_node['']:
+                        callback(prop, value)
