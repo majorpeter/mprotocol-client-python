@@ -4,6 +4,11 @@ from threading import Thread, RLock, Event
 from mprotocol_client_python.ProtocolResult import ProtocolResult
 from mprotocol_client_python.NodeProperty import NodeProperty
 
+
+def DEBUG_PRINT(message):
+    print(message)
+
+
 ## MProtocol client class
 #
 # Manages connection to the remote device and is the interface for data exchange
@@ -103,6 +108,7 @@ class Client:
 
     ## Background thread that handles incoming traffic
     def thread_function(self):
+        DEBUG_PRINT('starting thread')
         while True:
             try:
                 received_bytes = self.socket.recv(4096)
@@ -111,9 +117,13 @@ class Client:
                     self.process_received_str()
                 else:
                     # recv() returns empty string if the remote side has closed the connection
+                    DEBUG_PRINT('finishing thread (empty recv)')
+                    self.socket.close()
                     break
-            except ConnectionResetError:
-                # remote side has reset the connection and will not be sending more data
+            except Exception as e:
+                # remote side will not be sending more data after connection errors
+                DEBUG_PRINT('finishing thread (exception:%s)' % str(e))
+                self.socket.close()
                 break
 
     ## This function parses each incoming data segment
