@@ -49,3 +49,11 @@ client.root.CANVAS.subscribe_to_all_property_changes(prop_change_callback)
 # and when not interested anymore
 client.root.CANVAS.unsubscribe_from_all_property_changes(prop_change_callback)
 ```
+
+The client can also be used **asynchronously**, so that it will not wait for protocol responses (only TCP).
+This option is of course only valid for `SET` and `CALL` opertaions, where the result may be ignored.
+To send commands asynchronously, use `root_async` instead of `root`, e.g.:
+```python
+client.root_async.CANVAS.ColorHex = 'ffffff'
+client.root_async.CANVAS.setRed()
+```
