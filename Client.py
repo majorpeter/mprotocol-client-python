@@ -25,7 +25,8 @@ class Client:
         self.subscribed_nodes = {}
         self.subscription_lock = RLock()
 
-        self.root = NodeProperty(self)
+        self.root = NodeProperty(client=self, sync=True)
+        self.root_async = NodeProperty(client=self, sync=False)
 
         self.connect()
 

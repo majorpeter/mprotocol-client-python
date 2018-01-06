@@ -1,13 +1,14 @@
 ## This class allows easy access to nodes and properties
 class NodeProperty:
-    actual_attributes = ['_client', '_path', '_children']
+    actual_attributes = ['_client', '_path', '_sync', '_children']
 
     ## Constructor
     # @param client instance of Client class (serial interface)
     # @param path array of parent nodes / property name
-    def __init__(self, client, path=[]):
+    def __init__(self, client, path=[], sync=True):
         self._client = client
         self._path = path
+        self._sync = sync
         self._children = None
 
     ## Returns the node's or property's name (last element of path array)
@@ -51,11 +52,17 @@ class NodeProperty:
 
     ## Sends a GET message for this node
     def protocol_get_node(self):
-        return self._client.send_sync('GET ' + self.get_path_as_node())
+        command = 'GET ' + self.get_path_as_node()
+        if not self._sync:
+            raise BaseException('Cannot use GET in async node (%s)' % command)
+        return self._client.send_sync(command)
 
     ## Sends a GET message for this property
     def protocol_get_property_value(self):
-        return self._client.send_sync('GET ' + self.get_path_as_property())
+        command = 'GET ' + self.get_path_as_property()
+        if not self._sync:
+            raise BaseException('Cannot use GET in async node (%s)' % command)
+        return self._client.send_sync(command)
 
     ## Sends a CALL message for this method
     # @param argument optional single string argument of method
@@ -63,8 +70,12 @@ class NodeProperty:
         cmd = 'CALL ' + self.get_path_as_property()
         if argument:
               cmd += '=' + argument
-        result = self._client.send_sync(cmd)
-        return result
+
+        if self._sync:
+            result = self._client.send_sync(cmd)
+            return result
+        else:
+            self._client.send_async(cmd)
 
     ## Updates the _children array of this instance from device
     def fetch_children(self):
@@ -87,10 +98,13 @@ class NodeProperty:
         if key in NodeProperty.actual_attributes:
             object.__setattr__(self, key, value)
         else:
-            result = self._client.send_sync('SET /' + '/'.join(self._path) + '.' + key + '=' + value)
-            if not result:
-                raise BaseException('Could not set property value: %s, %s=%s, Error: %s' % \
-                                    (str(self._path), key, value, str(result)))
+            if self._sync:
+                result = self._client.send_sync('SET /' + '/'.join(self._path) + '.' + key + '=' + value)
+                if not result:
+                    raise BaseException('Could not set property value: %s, %s=%s, Error: %s' % \
+                                        (str(self._path), key, value, str(result)))
+            else:
+                self._client.send_async('SET /' + '/'.join(self._path) + '.' + key + '=' + value)
 
     ## This override implements lazy evaluation of GET messages (reads current value of the property and returns is)
     def __str__(self):
