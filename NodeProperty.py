@@ -30,6 +30,13 @@ class NodeProperty:
     def get_parent_path(self):
         return '/' + ' / '.join(self._path[:-1])
 
+    ## Returns child nodes
+    def get_children(self):
+        if not self._children:
+            self.fetch_children()
+
+        return self._children
+
     ## Registers a callback to this property's changes
     # @param callback the function to be called when the property changes
     #                 signature: callback_function(property_name, new_value)
