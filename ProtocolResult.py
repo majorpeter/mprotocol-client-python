@@ -13,12 +13,12 @@ class ProtocolResult:
             self.ordinal = int(match[1])
             self.message = response_line.split(':')[1]
             self.data = data
-        elif response_line.startswith('P_'):
+        elif response_line.startswith('P_') or response_line.startswith('PW_'):
             self.ordinal = 0
             self.message = 'Ok'
 
             self.data = {
-                'type': response_line[2:response_line.index(' ')],
+                'type': response_line[response_line.index('_')+1:response_line.index(' ')],
                 'value': response_line[response_line.index('=')+1:]
             }
         else:
@@ -32,6 +32,8 @@ class ProtocolResult:
         if re.match('^E([0-9]):', response_line):
             return True
         if response_line.startswith('P_'):
+            return True
+        if response_line.startswith('PW_'):
             return True
         return False
 

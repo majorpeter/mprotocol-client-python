@@ -49,7 +49,7 @@ class Client:
         with self.lock:
             if not self.socket:
                 self.connect()
-                
+
             self.socket.send((command + '\n').encode('ascii'))
 
     ## Sends command and waits for response
