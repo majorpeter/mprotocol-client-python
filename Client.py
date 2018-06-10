@@ -21,7 +21,8 @@ class Client:
         self.port = port
         self.timeout = timeout
 
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket = None
+        self.thread = None
         self.lock = RLock()
         self.result = None
         self.received_str = ''
@@ -36,23 +37,26 @@ class Client:
 
         self.connect()
 
+    def connect(self):
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.connect((self.ip_address, self.port))
+
         self.thread = Thread(target=self.thread_function, daemon=True)
         self.thread.start()
 
-    def connect(self):
-        self.socket.connect((self.ip_address, self.port))
-
     ## Sends command without waiting for any response
     def send_async(self, command):
-        if not self.socket:
-            raise BaseException('Socket not available')
-
         with self.lock:
+            if not self.socket:
+                self.connect()
+                
             self.socket.send((command + '\n').encode('ascii'))
 
     ## Sends command and waits for response
     def send_sync(self, command):
         with self.lock:
+            if not self.socket:
+                self.connect()
             self.response_received_or_error.clear()
             self.result = None
 
