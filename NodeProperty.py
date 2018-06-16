@@ -18,6 +18,10 @@ class NodeProperty:
             return self._path[-1]
         return '/'
 
+    ## Returns manual string of node
+    def get_node_manual(self):
+        return self._client.send_sync('MAN ' + self.get_path_as_node()).data
+
     ## Returns the nodes whole path
     def get_path_as_node(self):
         return '/' + ' / '.join(self._path)

@@ -157,6 +157,9 @@ class Client:
                 self.received_multilines = []
             elif line.startswith('CHG '):
                 self.process_change(line)
+            elif line.startswith('MAN '):
+                self.result = ProtocolResult(ProtocolResult.ok_init_str, line[4:])
+                self.response_received_or_error.set()
             else:
                 DEBUG_PRINT('Unable to process response: ' + line)
 
