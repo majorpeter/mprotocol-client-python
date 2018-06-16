@@ -1,13 +1,14 @@
 ## This class allows easy access to nodes and properties
 class NodeProperty:
-    actual_attributes = ['_client', '_path', '_sync', '_children']
+    actual_attributes = ['_client', '_path', '_parent', '_sync', '_children']
 
     ## Constructor
     # @param client instance of Client class (serial interface)
     # @param path array of parent nodes / property name
-    def __init__(self, client, path=[], sync=True):
+    def __init__(self, client, path=[], parent=None, sync=True):
         self._client = client
         self._path = path
+        self._parent = parent
         self._sync = sync
         self._children = None
 
@@ -94,11 +95,11 @@ class NodeProperty:
         for line in result.data:
             if line.startswith('N '):
                 child_node_name = line[2:]
-                self._children.append(NodeProperty(self._client, self._path + [child_node_name]))
+                self._children.append(NodeProperty(client=self._client, path=self._path + [child_node_name], parent=self, sync=self._sync))
 
     ## This override allows access to nodes' children by name as if it were an attribute of the node
     def __getattr__(self, name):
-        return NodeProperty(client=self._client, path=self._path + [name], sync=self._sync)
+        return NodeProperty(client=self._client, path=self._path + [name], parent=self, sync=self._sync)
 
     ## This override allows setting property values by '='
     def __setattr__(self, key, value):
