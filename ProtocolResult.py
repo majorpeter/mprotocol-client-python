@@ -17,9 +17,20 @@ class ProtocolResult:
             self.ordinal = 0
             self.message = 'Ok'
 
+            name = response_line[response_line.index(' ') + 1:]
+            type = response_line[response_line.index('_')+1:response_line.index(' ')]
+            if '=' in name:
+                value = name[name.index('=')+1:]
+                name = name[:name.index('=')]
+            else:
+                value = None
+            writable = response_line.startswith('PW_')
+
             self.data = {
-                'type': response_line[response_line.index('_')+1:response_line.index(' ')],
-                'value': response_line[response_line.index('=')+1:]
+                'name': name,
+                'type': type,
+                'value': value,
+                'writable': writable
             }
         else:
             raise ValueError('Invalid response line: %s' % response_line)
