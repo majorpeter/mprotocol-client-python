@@ -1,4 +1,7 @@
 ## This class allows easy access to nodes and properties
+from mprotocol_client_python.ProtocolResult import ProtocolResult
+
+
 class NodeProperty:
     actual_attributes = ['_client', '_path', '_parent', '_sync', '_children']
 
@@ -41,6 +44,17 @@ class NodeProperty:
             self.fetch_children()
 
         return self._children
+
+    ## Returns a set of ProtocolResult's containing the properties of the node
+    def get_properties(self):
+        result = self.protocol_get_node()
+        if not result:
+            raise BaseException('Could not get property value: ' + str(self._path))
+        property_set = []
+        for line in result.data:
+            if line.startswith('P'):
+                property_set.append(ProtocolResult(line))
+        return property_set
 
     ## Registers a callback to this property's changes
     # @param callback the function to be called when the property changes
