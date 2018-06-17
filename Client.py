@@ -58,7 +58,7 @@ class Client:
 
             if self.trace_tx_callback:
                 self.trace_tx_callback(command)
-            self.socket.send((command + '\n').encode('ascii'))
+            self.socket.send((command + '\n').encode('utf-8'))
 
     ## Sends command and waits for response
     def send_sync(self, command):
@@ -70,7 +70,7 @@ class Client:
 
             if self.trace_tx_callback:
                 self.trace_tx_callback(command)
-            self.socket.send((command + '\n').encode('ascii'))
+            self.socket.send((command + '\n').encode('utf-8'))
             if not self.response_received_or_error.wait(self.timeout):
                 self.socket.close()
                 raise BaseException('Connection timed out (last command: %s)' % command)
@@ -133,7 +133,7 @@ class Client:
             try:
                 received_bytes = self.socket.recv(4096)
                 if len(received_bytes) != 0:
-                    self.received_str += received_bytes.decode('ascii')
+                    self.received_str += received_bytes.decode('utf-8')
                     self.process_received_str()
                 else:
                     # recv() returns empty string if the remote side has closed the connection
