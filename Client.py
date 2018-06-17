@@ -75,13 +75,14 @@ class Client:
     #
     # @note Also enables sending changes on the given node if it is the first subscription.
     def add_subscription(self, callback, node_path, property_name=None):
+        send_open_command = False
         with self.subscription_lock:
             if node_path in self.subscribed_nodes.keys():
                 item = self.subscribed_nodes[node_path]
             else:
                 item = {}
                 self.subscribed_nodes[node_path] = item
-                self.send_sync('OPEN ' + node_path)
+                send_open_command = True
 
             if property_name is None:
                 property_name = ''
@@ -91,11 +92,14 @@ class Client:
             else:
                 item[property_name] = [callback]
 
+        if send_open_command:
+            self.send_sync('OPEN ' + node_path)
+
     ## Removes a subscription for asynchronous change messages
     #
     # @note Also disables sending changes on the given node if it was the last subscription.
     def remove_subscription(self, callback, node_path, property_name=None):
-        delete_subscription = False
+        send_close_command = False
         with self.subscription_lock:
             if node_path in self.subscribed_nodes.keys():
                 if property_name is None:
@@ -108,8 +112,8 @@ class Client:
                             del self.subscribed_nodes[node_path][property_name]
                             if len(self.subscribed_nodes[node_path]) == 0:
                                 del self.subscribed_nodes[node_path]
-                                delete_subscription = True
-        if delete_subscription:
+                                send_close_command = True
+        if send_close_command:
             self.send_sync('CLOSE ' + node_path)
 
     ## Background thread that handles incoming traffic
