@@ -31,6 +31,8 @@ class Client:
         self.response_received_or_error = Event()
         self.subscribed_nodes = {}
         self.subscription_lock = RLock()
+        self.trace_rx_callback = None
+        self.trace_tx_callback = None
 
         self.root = NodeProperty(client=self, sync=True)
         self.root_async = NodeProperty(client=self, sync=False)
@@ -44,12 +46,18 @@ class Client:
         self.thread = Thread(target=self.thread_function, daemon=True)
         self.thread.start()
 
+    def set_trace_callbacks(self, rx_callback, tx_callback):
+        self.trace_rx_callback = rx_callback
+        self.trace_tx_callback = tx_callback
+
     ## Sends command without waiting for any response
     def send_async(self, command):
         with self.lock:
             if not self.socket:
                 self.connect()
 
+            if self.trace_tx_callback:
+                self.trace_tx_callback(command)
             self.socket.send((command + '\n').encode('ascii'))
 
     ## Sends command and waits for response
@@ -60,6 +68,8 @@ class Client:
             self.response_received_or_error.clear()
             self.result = None
 
+            if self.trace_tx_callback:
+                self.trace_tx_callback(command)
             self.socket.send((command + '\n').encode('ascii'))
             if not self.response_received_or_error.wait(self.timeout):
                 self.socket.close()
@@ -147,6 +157,9 @@ class Client:
 
         for i in range(0, len(lines) - 1):
             line = lines[i]
+            if self.trace_rx_callback:
+                self.trace_rx_callback(line)
+
             if self.receiving_multiline:
                 if line != '}':
                     self.received_multilines.append(line)
