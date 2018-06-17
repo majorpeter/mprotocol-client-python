@@ -95,6 +95,7 @@ class Client:
     #
     # @note Also disables sending changes on the given node if it was the last subscription.
     def remove_subscription(self, callback, node_path, property_name=None):
+        delete_subscription = False
         with self.subscription_lock:
             if node_path in self.subscribed_nodes.keys():
                 if property_name is None:
@@ -106,8 +107,10 @@ class Client:
                         if len(self.subscribed_nodes[node_path][property_name]) == 0:
                             del self.subscribed_nodes[node_path][property_name]
                             if len(self.subscribed_nodes[node_path]) == 0:
-                                self.send_sync('CLOSE ' + node_path)
                                 del self.subscribed_nodes[node_path]
+                                delete_subscription = True
+        if delete_subscription:
+            self.send_sync('CLOSE ' + node_path)
 
     ## Background thread that handles incoming traffic
     def thread_function(self):
