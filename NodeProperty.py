@@ -111,7 +111,7 @@ class NodeProperty:
     def fetch_children(self):
         result = self.protocol_get_node()
         if not result:
-            raise BaseException('Could not fetch children for: %s' % str(self._path))
+            raise BaseException('Could not fetch children for: %s' % str(self.get_path_as_node()))
 
         self._children = []
         for line in result.data:
