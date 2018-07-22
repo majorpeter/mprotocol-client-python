@@ -1,13 +1,9 @@
+import logging
 import socket
-from datetime import datetime
 from threading import Thread, RLock, Event
 
 from mprotocol_client_python.ProtocolResult import ProtocolResult
 from mprotocol_client_python.NodeProperty import NodeProperty
-
-
-def DEBUG_PRINT(message):
-    print('[%s] %s' % (datetime.now().strftime('%H:%M:%S'), message))
 
 
 ## MProtocol client class
@@ -128,7 +124,7 @@ class Client:
 
     ## Background thread that handles incoming traffic
     def thread_function(self):
-        DEBUG_PRINT('starting thread')
+        logging.info('Starting client thread')
         while True:
             try:
                 received_bytes = self.socket.recv(4096)
@@ -137,11 +133,11 @@ class Client:
                     self.process_received_str()
                 else:
                     # recv() returns empty string if the remote side has closed the connection
-                    DEBUG_PRINT('finishing thread (empty recv)')
+                    logging.info('Finishing thread (server closed)')
                     break
             except Exception as e:
                 # remote side will not be sending more data after connection errors
-                DEBUG_PRINT('finishing thread (exception:%s)' % str(e))
+                logging.error('Finishing thread (exception:%s)' % str(e))
                 break
 
         # close and delete socket so that it won't be used again
@@ -181,7 +177,7 @@ class Client:
                 self.result = ProtocolResult(ProtocolResult.ok_init_str, line[4:])
                 self.response_received_or_error.set()
             else:
-                DEBUG_PRINT('Unable to process response: ' + line)
+                logging.warning('Unable to process response: ' + line)
 
         # keep last unfinished line in buffer
         self.received_str = lines[-1]
